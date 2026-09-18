@@ -1,0 +1,345 @@
+[
+  {
+    "id": "saree",
+    "name": "Sarees",
+    "slug": "saree",
+    "emoji": "👘",
+    "color": "#D4847A",
+    "description": "Woman's Saree",
+    "status": "active",
+    "types": [
+      {
+        "id": "cutwork",
+        "name": "Cutwork",
+        "slug": "cutwork"
+      },
+      {
+        "id": "printed",
+        "name": "Printed",
+        "slug": "printed"
+      },
+      {
+        "id": "frill",
+        "name": "Frill",
+        "slug": "frill"
+      },
+      {
+        "id": "party-wear",
+        "name": "Party Wear",
+        "slug": "party-wear"
+      }
+    ]
+  },
+  {
+    "id": "dress",
+    "name": "Dresses",
+    "slug": "dress",
+    "emoji": "👗",
+    "color": "#C084A8",
+    "description": "Woman's Dress",
+    "status": "active",
+    "types": [
+      {
+        "id": "3-piece",
+        "name": "3-Piece",
+        "slug": "3-piece"
+      },
+      {
+        "id": "one-piece",
+        "name": "One-Piece",
+        "slug": "one-piece"
+      },
+      {
+        "id": "cord-set",
+        "name": "Cord Set",
+        "slug": "cord-set"
+      },
+      {
+        "id": "short-kurti",
+        "name": "Short Kurti",
+        "slug": "short-kurti"
+      },
+      {
+        "id": "kurti",
+        "name": "Kurti",
+        "slug": "kurti"
+      },
+      {
+        "id": "crop-top",
+        "name": "Crop Top",
+        "slug": "crop-top"
+      },
+      {
+        "id": "feeding-dress",
+        "name": "Feeding Dress",
+        "slug": "feeding-dress"
+      }
+    ]
+  },
+  {
+    "id": "gowns",
+    "name": "Gowns",
+    "slug": "gowns",
+    "emoji": "👑",
+    "color": "#9B7AB8",
+    "description": "Woman's Gown",
+    "status": "active",
+    "types": [
+      {
+        "id": "off-shoulder",
+        "name": "Off-Shoulder",
+        "slug": "off-shoulder"
+      },
+      {
+        "id": "cotton-gown",
+        "name": "Cotton",
+        "slug": "cotton-gown"
+      },
+      {
+        "id": "crape",
+        "name": "Crape",
+        "slug": "crape"
+      },
+      {
+        "id": "fitting",
+        "name": "Fitting",
+        "slug": "fitting"
+      },
+      {
+        "id": "smocking",
+        "name": "Smocking",
+        "slug": "smocking"
+      }
+    ]
+  },
+  {
+    "id": "womans-jeans",
+    "name": "Women's Jeans",
+    "slug": "womans-jeans",
+    "emoji": "👖",
+    "color": "#5A7A9A",
+    "description": "Woman's Jeans",
+    "status": "active",
+    "types": [
+      {
+        "id": "baggy",
+        "name": "Baggy",
+        "slug": "baggy"
+      },
+      {
+        "id": "formal-women",
+        "name": "Formal",
+        "slug": "formal-women"
+      },
+      {
+        "id": "daily-wear",
+        "name": "Daily Wear",
+        "slug": "daily-wear"
+      }
+    ]
+  },
+  {
+    "id": "blouse",
+    "name": "Blouses",
+    "slug": "blouse",
+    "emoji": "👚",
+    "color": "#8AAE92",
+    "description": "Woman's Blouse",
+    "status": "active",
+    "types": [
+      {
+        "id": "blouse-default",
+        "name": "Blouse",
+        "slug": "blouse-default"
+      }
+    ]
+  },
+  {
+    "id": "mens-wear",
+    "name": "Men's Wear",
+    "slug": "mens-wear",
+    "emoji": "👔",
+    "color": "#4A6A8A",
+    "description": "Men's Collection",
+    "status": "active",
+    "types": [
+      {
+        "id": "jeans-men",
+        "name": "Jeans",
+        "slug": "jeans-men"
+      },
+      {
+        "id": "shirt",
+        "name": "Shirt",
+        "slug": "shirt"
+      },
+      {
+        "id": "formal-men",
+        "name": "Formal",
+        "slug": "formal-men"
+      },
+      {
+        "id": "t-shirt",
+        "name": "T-Shirt",
+        "slug": "t-shirt"
+      },
+      {
+        "id": "other-men",
+        "name": "Other",
+        "slug": "other-men"
+      }
+    ]
+  },
+  {
+    "id": "jewellery",
+    "name": "Jewellery",
+    "slug": "jewellery",
+    "emoji": "💍",
+    "color": "#D4AF37",
+    "description": "Anti-Tarnish, Men's & Indian Wear",
+    "status": "active",
+    "types": [
+      {
+        "id": "anti-tarnish-kada",
+        "name": "Anti-Tarnish Kada",
+        "slug": "anti-tarnish-kada"
+      },
+      {
+        "id": "baby-size-kada",
+        "name": "Baby Size Kada",
+        "slug": "baby-size-kada"
+      },
+      {
+        "id": "bracelets",
+        "name": "Bracelets",
+        "slug": "bracelets"
+      },
+      {
+        "id": "earrings-anti",
+        "name": "Anti-Tarnish Earrings",
+        "slug": "earrings-anti"
+      },
+      {
+        "id": "rings-anti",
+        "name": "Anti-Tarnish Rings",
+        "slug": "rings-anti"
+      },
+      {
+        "id": "chains",
+        "name": "Chains",
+        "slug": "chains"
+      },
+      {
+        "id": "waist-chain",
+        "name": "Waist Chain",
+        "slug": "waist-chain"
+      },
+      {
+        "id": "anklet",
+        "name": "Anklet",
+        "slug": "anklet"
+      },
+      {
+        "id": "piercings",
+        "name": "Piercings",
+        "slug": "piercings"
+      },
+      {
+        "id": "ear-cuffs",
+        "name": "Ear Cuffs",
+        "slug": "ear-cuffs"
+      },
+      {
+        "id": "studs",
+        "name": "Studs",
+        "slug": "studs"
+      },
+      {
+        "id": "mens-kada",
+        "name": "Men's Kada",
+        "slug": "mens-kada"
+      },
+      {
+        "id": "mens-chain",
+        "name": "Men's Chain",
+        "slug": "mens-chain"
+      },
+      {
+        "id": "nath",
+        "name": "Nath",
+        "slug": "nath"
+      },
+      {
+        "id": "zumka",
+        "name": "Zumka",
+        "slug": "zumka"
+      },
+      {
+        "id": "manglsutra",
+        "name": "Manglsutra",
+        "slug": "manglsutra"
+      },
+      {
+        "id": "necklace",
+        "name": "Necklace",
+        "slug": "necklace"
+      },
+      {
+        "id": "bangles",
+        "name": "Bangles",
+        "slug": "bangles"
+      },
+      {
+        "id": "earrings-indian",
+        "name": "Indian Earrings",
+        "slug": "earrings-indian"
+      },
+      {
+        "id": "rings-indian",
+        "name": "Indian Rings",
+        "slug": "rings-indian"
+      },
+      {
+        "id": "painjan",
+        "name": "Painjan",
+        "slug": "painjan"
+      }
+    ]
+  },
+  {
+    "id": "others",
+    "name": "Others",
+    "slug": "others",
+    "emoji": "✨",
+    "color": "#A07850",
+    "description": "Bags & Home Accessories",
+    "status": "active",
+    "types": [
+      {
+        "id": "ladies-bag",
+        "name": "Ladies Bag",
+        "slug": "ladies-bag"
+      },
+      {
+        "id": "bag",
+        "name": "Bag",
+        "slug": "bag"
+      },
+      {
+        "id": "hair-accessories",
+        "name": "Hair Accessories",
+        "slug": "hair-accessories"
+      },
+      {
+        "id": "bed-sheet",
+        "name": "Bed Sheet",
+        "slug": "bed-sheet"
+      },
+      {
+        "id": "blanket",
+        "name": "Blanket",
+        "slug": "blanket"
+      }
+    ]
+  }
+]

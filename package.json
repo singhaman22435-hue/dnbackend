@@ -1,0 +1,36 @@
+{
+  "name": "dn-shoppy-server",
+  "version": "1.0.0",
+  "description": "DN Shoppy Backend API",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "build": "echo \"No build step required for Express API\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1104.0",
+    "apicache": "^1.6.3",
+    "axios": "^1.19.0",
+    "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.10.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.6.1",
+    "firebase-admin": "^14.2.0",
+    "google-auth-library": "^10.9.1",
+    "helmet": "^8.3.0",
+    "hpp": "^0.2.3",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.2.0",
+    "pg": "^8.22.0",
+    "uuid": "^9.0.0",
+    "xlsx": "^0.18.5",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
+}

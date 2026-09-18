@@ -1,0 +1,23 @@
+[
+  {
+    "id": "promo_1",
+    "code": "DNSAVE10",
+    "discountPercent": 10,
+    "status": "active",
+    "createdAt": "2026-07-29T08:13:11.063Z"
+  },
+  {
+    "id": "promo_2",
+    "code": "WELCOME20",
+    "discountPercent": 20,
+    "status": "active",
+    "createdAt": "2026-07-29T08:13:11.063Z"
+  },
+  {
+    "id": "promo_3",
+    "code": "FIRST15",
+    "discountPercent": 15,
+    "status": "active",
+    "createdAt": "2026-07-29T08:13:11.063Z"
+  }
+]

@@ -1,0 +1,183 @@
+[
+  {
+    "id": "P001",
+    "name": "Royal Kanjivaram Silk Saree",
+    "category": "saree",
+    "type": "silk-saree",
+    "clothType": "silk",
+    "price": 8999,
+    "originalPrice": 14999,
+    "stock": 12,
+    "images": [
+      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&q=80"
+    ],
+    "colors": [
+      "#8B0000",
+      "#1A237E",
+      "#1B5E20"
+    ],
+    "colorNames": [
+      "Crimson Red",
+      "Royal Blue",
+      "Forest Green"
+    ],
+    "sizes": [
+      "Free Size"
+    ],
+    "rating": 4.8,
+    "reviews": 234,
+    "badge": "40% OFF",
+    "isTopSelling": true,
+    "isRecommended": true,
+    "tags": [
+      "bestseller",
+      "trending"
+    ],
+    "description": "Handwoven pure silk fabric with a naturally lustrous sheen and smooth texture. This premium silk piece drapes beautifully, making it perfect for festive occasions and special events. The rich color and fine weave reflect exceptional craftsmanship and tradition.",
+    "material": "100% Pure Silk",
+    "status": "active"
+  },
+  {
+    "id": "P002",
+    "name": "Banarasi Cotton Silk Saree",
+    "category": "saree",
+    "type": "cotton-saree",
+    "clothType": "cotton",
+    "price": 3499,
+    "originalPrice": 5999,
+    "stock": 25,
+    "images": [
+      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&q=80"
+    ],
+    "colors": [
+      "#FF6B35",
+      "#FFC300"
+    ],
+    "colorNames": [
+      "Mango Orange",
+      "Golden Yellow"
+    ],
+    "sizes": [
+      "Free Size"
+    ],
+    "rating": 4.5,
+    "reviews": 156,
+    "isTopSelling": false,
+    "isRecommended": true,
+    "tags": [
+      "new"
+    ],
+    "description": "Crafted from 100% breathable cotton fabric, this piece offers exceptional comfort for all-day wear. The soft, skin-friendly texture makes it ideal for everyday styling. Easy to care for and maintain, it retains its color and shape even after multiple washes.",
+    "material": "Cotton Silk Blend",
+    "status": "active"
+  },
+  {
+    "id": "P005",
+    "name": "Embroidered Anarkali Kurti",
+    "category": "dress",
+    "type": "kurti",
+    "clothType": "rayon",
+    "price": 1499,
+    "originalPrice": 2999,
+    "stock": 45,
+    "images": [
+      "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=600&q=80"
+    ],
+    "colors": [
+      "#FF80AB",
+      "#B2EBF2"
+    ],
+    "colorNames": [
+      "Blush Pink",
+      "Sky Blue"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+    ],
+    "rating": 4.4,
+    "reviews": 312,
+    "isTopSelling": true,
+    "isRecommended": true,
+    "tags": [
+      "bestseller"
+    ],
+    "description": "Premium rayon fabric with a silky smooth texture and beautiful drape. This versatile piece combines comfort with style, making it perfect for both casual and semi-formal occasions. The fabric breathes well and maintains its shape throughout the day.",
+    "material": "Rayon",
+    "status": "active"
+  },
+  {
+    "id": "P009",
+    "name": "Off-Shoulder Evening Gown",
+    "category": "gowns",
+    "type": "evening-gown",
+    "clothType": "velvet",
+    "price": 5999,
+    "originalPrice": 9999,
+    "stock": 10,
+    "images": [
+      "https://images.unsplash.com/photo-1596783074918-c84cb06531ca?w=600&q=80"
+    ],
+    "colors": [
+      "#212121",
+      "#B71C1C"
+    ],
+    "colorNames": [
+      "Black",
+      "Red"
+    ],
+    "sizes": [
+      "XS",
+      "S",
+      "M",
+      "L",
+      "XL"
+    ],
+    "rating": 4.8,
+    "reviews": 98,
+    "isTopSelling": true,
+    "isRecommended": true,
+    "tags": [
+      "premium"
+    ],
+    "description": "Luxurious velvet fabric with a deep, rich pile that catches light beautifully. This premium piece exudes sophistication and royalty. The smooth, plush texture feels incredibly soft against the skin and is perfect for winter festive wear and grand occasions.",
+    "material": "Velvet & Satin",
+    "status": "active"
+  },
+  {
+    "id": "P019",
+    "name": "Kundan Choker Necklace Set",
+    "category": "jewellery",
+    "type": "necklace",
+    "clothType": "default",
+    "price": 2499,
+    "originalPrice": 4999,
+    "stock": 15,
+    "images": [
+      "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600&q=80"
+    ],
+    "colors": [
+      "#D4AF37"
+    ],
+    "colorNames": [
+      "Gold Plated"
+    ],
+    "sizes": [
+      "Free Size"
+    ],
+    "rating": 4.7,
+    "reviews": 267,
+    "isTopSelling": true,
+    "isRecommended": true,
+    "tags": [
+      "bestseller"
+    ],
+    "description": "Stunning Kundan choker necklace set with matching earrings.",
+    "material": "Alloy with Kundan",
+    "status": "active"
+  }
+]
