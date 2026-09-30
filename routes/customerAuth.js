@@ -16,20 +16,20 @@ const sanitizeUser = (user) => {
 // POST /api/customerAuth/register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, phone, password } = req.body;
     
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Name, email, and password are required' });
+    if (!name || !phone || !password) {
+      return res.status(400).json({ error: 'Name, phone number, and password are required' });
     }
 
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    // Check if user exists (using email as the ID for customers collection)
-    const existingUser = await db.getDoc('customers', email.toLowerCase());
+    // Check if user exists (using phone as the ID for customers collection)
+    const existingUser = await db.getDoc('customers', phone);
     if (existingUser) {
-      return res.status(409).json({ error: 'Email is already registered' });
+      return res.status(409).json({ error: 'Phone number is already registered' });
     }
 
     // Hash password
@@ -37,9 +37,9 @@ router.post('/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, salt);
 
     const newUser = {
-      id: email.toLowerCase(),
+      id: phone,
       name,
-      email: email.toLowerCase(),
+      phone: phone,
       passwordHash,
       createdAt: new Date().toISOString(),
       role: 'customer'
@@ -50,7 +50,7 @@ router.post('/register', async (req, res) => {
 
     // Generate JWT
     const token = jwt.sign(
-      { id: newUser.id, email: newUser.email, role: 'customer' },
+      { id: newUser.id, phone: newUser.phone, role: 'customer' },
       JWT_SECRET,
       { expiresIn: '30d' }
     );
@@ -76,27 +76,27 @@ router.post('/register', async (req, res) => {
 // POST /api/customerAuth/login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { phone, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    if (!phone || !password) {
+      return res.status(400).json({ error: 'Phone number and password are required' });
     }
 
     // Find user
-    const user = await db.getDoc('customers', email.toLowerCase());
+    const user = await db.getDoc('customers', phone);
     if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: 'Invalid phone number or password' });
     }
 
     // Compare passwords
     const match = await bcrypt.compare(password, user.passwordHash);
     if (!match) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: 'Invalid phone number or password' });
     }
 
     // Generate JWT
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: 'customer' },
+      { id: user.id, phone: user.phone, role: 'customer' },
       JWT_SECRET,
       { expiresIn: '30d' }
     );
@@ -140,7 +140,7 @@ router.post('/verify', async (req, res) => {
       return res.status(401).json({ valid: false });
     }
 
-    const user = await db.getDoc('customers', decoded.email);
+    const user = await db.getDoc('customers', decoded.id);
     if (!user) return res.status(401).json({ valid: false });
 
     res.json({ valid: true, user: sanitizeUser(user) });
@@ -211,8 +211,7 @@ router.post('/google', async (req, res) => {
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
     const { phone, address, city, state, pincode, dnCoins, coinHistory } = req.body;
-    // req.user is set by authMiddleware
-    const userId = req.user.email ? req.user.email.toLowerCase() : req.user.id;
+    const userId = req.user.id;
     
     let user = await db.getDoc('customers', userId);
     if (!user) {
