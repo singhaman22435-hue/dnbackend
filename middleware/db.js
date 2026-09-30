@@ -18,9 +18,9 @@ if (process.env.DATABASE_URL) {
     pgPool = new Pool({
       connectionString: connStr,
       ssl: { rejectUnauthorized: false },
-      max: 20, // Max number of clients in the pool
-      idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-      connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection could not be established
+      max: 1, // SET TO 1 FOR VERCEL SERVERLESS TO PREVENT CONNECTION LIMIT ERROR
+      idleTimeoutMillis: 10000, // Close idle clients after 10 seconds
+      connectionTimeoutMillis: 10000, 
     });
 
     pgPool.on('error', (err) => {
