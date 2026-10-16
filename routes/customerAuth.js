@@ -210,7 +210,7 @@ router.post('/google', async (req, res) => {
 // PUT /api/customerAuth/profile
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
-    const { phone, address, city, state, pincode, dnCoins, coinHistory } = req.body;
+    const { phone, address, city, state, pincode } = req.body;
     const userId = req.user.id;
     
     let user = await db.getDoc('customers', userId);
@@ -225,9 +225,7 @@ router.put('/profile', authMiddleware, async (req, res) => {
       address: address !== undefined ? address : user.address,
       city: city !== undefined ? city : user.city,
       state: state !== undefined ? state : user.state,
-      pincode: pincode !== undefined ? pincode : user.pincode,
-      dnCoins: dnCoins !== undefined ? dnCoins : (user.dnCoins || 0),
-      coinHistory: coinHistory !== undefined ? coinHistory : (user.coinHistory || [])
+      pincode: pincode !== undefined ? pincode : user.pincode
     };
 
     await db.setDoc('customers', userId, user);
