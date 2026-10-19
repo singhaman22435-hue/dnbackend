@@ -53,24 +53,26 @@ router.get('/stats', authMiddleware, async (req, res) => {
 
     const lowStock = products.filter(p => (p.stock || 0) <= 5);
 
+    const paidOrders = orders.filter(o => o.paymentStatus === 'Paid');
+
     res.json({
       overview: {
-        totalOrders: orders.length,
-        todayOrders: todayOrders.length,
-        monthOrders: thisMonth.length,
-        totalRevenue: orders.reduce((s, o) => s + (o.total || 0), 0),
-        todayRevenue: todayOrders.reduce((s, o) => s + (o.total || 0), 0),
-        monthRevenue: thisMonth.reduce((s, o) => s + (o.total || 0), 0),
+        totalOrders: paidOrders.length,
+        todayOrders: todayOrders.filter(o => o.paymentStatus === 'Paid').length,
+        monthOrders: thisMonth.filter(o => o.paymentStatus === 'Paid').length,
+        totalRevenue: paidOrders.reduce((s, o) => s + (o.total || 0), 0),
+        todayRevenue: todayOrders.filter(o => o.paymentStatus === 'Paid').reduce((s, o) => s + (o.total || 0), 0),
+        monthRevenue: thisMonth.filter(o => o.paymentStatus === 'Paid').reduce((s, o) => s + (o.total || 0), 0),
         totalProducts: products.length,
         totalUsers: usersCount,
-        pendingOrders: orders.filter(o => o.orderStatus === 'Pending').length,
+        pendingOrders: paidOrders.filter(o => o.orderStatus === 'Processing' || o.orderStatus === 'Pending').length,
         lowStockCount: lowStock.length,
       },
       revenueByDay,
       statusCounts,
       topProducts,
       lowStock: lowStock.slice(0, 10),
-      recentOrders: orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5),
+      recentOrders: paidOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5),
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -34,7 +34,7 @@ async function getRazorpayInstance() {
 router.get('/', authMiddleware, async (req, res) => {
   try {
     let orders = await getCollection('orders');
-    const { search, status, date, page = 1, limit = 50 } = req.query;
+    const { search, status, paymentStatus, date, page = 1, limit = 50 } = req.query;
 
     if (search) {
       const q = search.toLowerCase();
@@ -46,6 +46,7 @@ router.get('/', authMiddleware, async (req, res) => {
       );
     }
     if (status && status !== 'all') orders = orders.filter(o => o.orderStatus === status);
+    if (paymentStatus && paymentStatus !== 'all') orders = orders.filter(o => o.paymentStatus === paymentStatus);
     if (date) orders = orders.filter(o => o.date === date);
 
     // Sort newest first
@@ -384,7 +385,13 @@ router.post('/bulk/action', authMiddleware, async (req, res) => {
 // ─── GET Excel export ────────────────────────────────────────
 router.get('/export/excel', authMiddleware, async (req, res) => {
   try {
-    const orders = await getCollection('orders');
+    const { paymentStatus } = req.query;
+    let orders = await getCollection('orders');
+    if (paymentStatus && paymentStatus !== 'all') {
+      orders = orders.filter(o => o.paymentStatus === paymentStatus);
+    } else if (paymentStatus === undefined) {
+      orders = orders.filter(o => o.paymentStatus === 'Paid');
+    }
     orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     const rows = orders.map(o => ({
