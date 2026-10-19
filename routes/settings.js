@@ -74,33 +74,25 @@ router.post('/lookbook', authMiddleware, async (req, res) => {
   }
 });
 
-// GET UPI settings (public - needed for checkout QR)
-router.get('/upi', async (req, res) => {
-  try {
-    const upiSettings = await getDoc('settings', 'upi');
-    if (upiSettings) {
-      res.json(upiSettings);
-    } else {
-      res.json({ upiId: '', businessName: 'DN Shoppy' });
-    }
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
-  }
+// GET Razorpay status (admin only - permanently configured)
+router.get('/razorpay', authMiddleware, async (req, res) => {
+  res.json({
+    keyId: 'rzp_live_ToavHwGofVYh11',
+    hasSecret: true,
+    mode: 'live',
+    isConfigured: true,
+    isPermanent: true
+  });
 });
 
-// POST update UPI settings (admin only)
-router.post('/upi', authMiddleware, async (req, res) => {
-  try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin' && req.user.role !== undefined) {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    const { upiId, businessName } = req.body;
-    if (!upiId) return res.status(400).json({ error: 'UPI ID is required' });
-    await setDoc('settings', 'upi', { upiId, businessName: businessName || 'DN Shoppy' });
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Server error saving settings' });
-  }
+// POST update Razorpay settings (disabled as keys are permanently locked)
+router.post('/razorpay', authMiddleware, async (req, res) => {
+  return res.status(403).json({ error: 'Razorpay keys are permanently configured in the backend and cannot be modified.' });
+});
+
+// Deprecated UPI settings endpoint (kept for backward compatibility)
+router.get('/upi', async (req, res) => {
+  res.json({ upiId: '', businessName: 'DN Shoppy', deprecated: true });
 });
 
 module.exports = router;

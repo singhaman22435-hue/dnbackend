@@ -1,13 +1,34 @@
 const router = require('express').Router();
 const { v4: uuidv4 } = require('uuid');
 const XLSX = require('xlsx');
+const Razorpay = require('razorpay');
+const crypto = require('crypto');
 const { getCollection, getDoc, addDoc, setDoc, deleteDoc, pgPool } = require('../middleware/db');
 const { authMiddleware } = require('../middleware/auth');
 
 // Simple in-memory rate limiter to prevent fake order spam (3 orders per 24hrs per IP)
 const orderRateLimits = new Map();
 
-// No seed orders
+// Permanent Live Razorpay Credentials
+const PERMANENT_RAZORPAY_KEY_ID = 'rzp_live_ToavHwGofVYh11';
+const PERMANENT_RAZORPAY_KEY_SECRET = 'uJ9S2ETCYApXxET691Cmpixk';
+
+// Helper to get Razorpay configuration
+async function getRazorpayConfig() {
+  const keyId = process.env.RAZORPAY_KEY_ID || PERMANENT_RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || PERMANENT_RAZORPAY_KEY_SECRET;
+  return { keyId: keyId.trim(), keySecret: keySecret.trim() };
+}
+
+async function getRazorpayInstance() {
+  const { keyId, keySecret } = await getRazorpayConfig();
+  return {
+    razorpay: new Razorpay({ key_id: keyId, key_secret: keySecret }),
+    keyId,
+    keySecret
+  };
+}
+
 
 // ─── GET all orders ───────────────────────────────────────────
 router.get('/', authMiddleware, async (req, res) => {
@@ -61,6 +82,94 @@ router.get('/my-orders', authMiddleware, async (req, res) => {
     }
     
     res.json(myOrders);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET Razorpay public Key ID (public) ─────────────────────
+router.get('/razorpay/key', async (req, res) => {
+  try {
+    const { keyId } = await getRazorpayConfig();
+    res.json({ keyId: keyId || null, isConfigured: Boolean(keyId) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST Razorpay Webhook ───────────────────────────────────
+router.post('/razorpay/webhook', async (req, res) => {
+  try {
+    const { keySecret } = await getRazorpayConfig();
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || keySecret;
+    const signature = req.headers['x-razorpay-signature'];
+
+    if (webhookSecret && signature) {
+      const shasum = crypto.createHmac('sha256', webhookSecret);
+      shasum.update(JSON.stringify(req.body));
+      const digest = shasum.digest('hex');
+      if (digest !== signature) {
+        return res.status(400).json({ error: 'Invalid webhook signature' });
+      }
+    }
+
+    const event = req.body.event;
+    if (event === 'payment.captured' || event === 'order.paid') {
+      const payment = req.body.payload?.payment?.entity;
+      const orderRzpId = payment?.order_id;
+      const receipt = payment?.notes?.orderId || payment?.receipt;
+
+      if (receipt) {
+        const order = await getDoc('orders', receipt);
+        if (order && order.paymentStatus !== 'Paid') {
+          await setDoc('orders', receipt, {
+            ...order,
+            paymentStatus: 'Paid',
+            paymentMethod: 'Razorpay',
+            razorpayPaymentId: payment.id,
+            razorpayOrderId: orderRzpId || order.razorpayOrderId,
+            orderStatus: order.orderStatus === 'Pending' ? 'Processing' : order.orderStatus,
+            paidAt: new Date().toISOString()
+          });
+        }
+      }
+    }
+
+    res.json({ status: 'ok' });
+  } catch (err) {
+    console.error('Webhook error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET track orders by Order ID or Phone number (public) ───
+router.get('/track/lookup', async (req, res) => {
+  try {
+    const { query } = req.query;
+    if (!query || !query.trim()) {
+      return res.status(400).json({ error: 'Order ID or phone number is required' });
+    }
+    const rawQ = query.trim();
+    const qLower = rawQ.toLowerCase();
+    const cleanPhone = rawQ.replace(/\D/g, '');
+
+    // 1. Check direct match by doc ID
+    const direct = await getDoc('orders', rawQ);
+    if (direct) {
+      return res.json([direct]);
+    }
+
+    // 2. Search through orders collection
+    const orders = await getCollection('orders');
+    const matches = orders.filter(o => {
+      const idMatch = o.id && o.id.toLowerCase() === qLower;
+      const phoneDigits = o.customer?.phone ? o.customer.phone.toString().replace(/\D/g, '') : '';
+      const phoneMatch = cleanPhone.length >= 10 && phoneDigits.endsWith(cleanPhone.slice(-10));
+      return idMatch || phoneMatch;
+    });
+
+    matches.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json(matches);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -303,6 +412,101 @@ router.post('/:id/verify-utr', async (req, res) => {
     res.json({ success: true, order: updated });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST create Razorpay order for an existing order ─────────
+router.post('/:id/razorpay-order', async (req, res) => {
+  try {
+    const order = await getDoc('orders', req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    if (order.paymentStatus === 'Paid') {
+      return res.status(400).json({ error: 'Order is already marked as paid' });
+    }
+
+    const { razorpay, keyId } = await getRazorpayInstance();
+    const amountPaise = Math.round(Number(order.total) * 100);
+
+    if (isNaN(amountPaise) || amountPaise <= 0) {
+      return res.status(400).json({ error: 'Invalid order total' });
+    }
+
+    const options = {
+      amount: amountPaise,
+      currency: 'INR',
+      receipt: String(order.id).slice(0, 40),
+      notes: {
+        orderId: String(order.id),
+        customerName: String(order.customer?.name || ''),
+        customerPhone: String(order.customer?.phone || '')
+      }
+    };
+
+    const rzpOrder = await razorpay.orders.create(options);
+
+    await setDoc('orders', req.params.id, {
+      ...order,
+      razorpayOrderId: rzpOrder.id
+    });
+
+    res.json({
+      success: true,
+      razorpayOrderId: rzpOrder.id,
+      amount: rzpOrder.amount,
+      currency: rzpOrder.currency,
+      keyId: keyId,
+      orderId: order.id
+    });
+  } catch (err) {
+    console.error('Error creating Razorpay order:', err);
+    res.status(500).json({ error: err.message || 'Failed to create Razorpay order' });
+  }
+});
+
+// ─── POST verify Razorpay payment ────────────────────────────
+router.post('/:id/verify-razorpay', async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ error: 'Missing Razorpay payment verification details' });
+    }
+
+    const order = await getDoc('orders', req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    const { keySecret } = await getRazorpayConfig();
+    if (!keySecret) {
+      return res.status(500).json({ error: 'Razorpay secret is not configured' });
+    }
+
+    // Verify HMAC-SHA256 signature
+    const body = `${razorpay_order_id}|${razorpay_payment_id}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', keySecret)
+      .update(body.toString())
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ error: 'Payment verification failed: Invalid signature' });
+    }
+
+    // Mark as Paid
+    const updated = await setDoc('orders', req.params.id, {
+      ...order,
+      paymentMethod: 'Razorpay',
+      paymentStatus: 'Paid',
+      razorpayPaymentId: razorpay_payment_id,
+      razorpayOrderId: razorpay_order_id,
+      orderStatus: order.orderStatus === 'Pending' ? 'Processing' : order.orderStatus,
+      paidAt: new Date().toISOString()
+    });
+
+    res.json({ success: true, order: updated });
+  } catch (err) {
+    console.error('Error verifying Razorpay payment:', err);
+    res.status(500).json({ error: err.message || 'Payment verification failed' });
   }
 });
 

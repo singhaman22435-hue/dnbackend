@@ -59,9 +59,20 @@ const seedProducts = async () => {
 
 setTimeout(seedProducts, 1000);
 
+// Only cache public customer GET requests, never admin or timestamped requests
+const shouldCache = (req, res) => {
+  if (req.headers.authorization || req.cookies?.dn_admin_token || req.query._t || req.query.admin) {
+    return false;
+  }
+  return res.statusCode === 200;
+};
+
 // ─── GET all products ────────────────────────────────────────
-router.get('/', cache('5 minutes'), async (req, res) => {
+router.get('/', cache('5 minutes', shouldCache), async (req, res) => {
   try {
+    if (req.headers.authorization || req.query._t) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
     let products = await getCollection('products');
     const { category, search, status } = req.query;
     if (category) products = products.filter(p => p.category === category);
@@ -84,8 +95,11 @@ router.get('/auto-desc/:clothType', (req, res) => {
 });
 
 // ─── GET single product ──────────────────────────────────────
-router.get('/:id', cache('5 minutes'), async (req, res) => {
+router.get('/:id', cache('5 minutes', shouldCache), async (req, res) => {
   try {
+    if (req.headers.authorization || req.query._t) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
     const product = await getDoc('products', req.params.id);
     if (!product) return res.status(404).json({ error: 'Product not found' });
     res.json(product);
