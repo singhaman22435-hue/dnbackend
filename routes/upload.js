@@ -7,6 +7,7 @@ const https = require('https');
 const cloudinary = require('cloudinary').v2;
 const { PutObjectCommand } = require('@aws-sdk/client-s3');
 const { s3Client } = require('../utils/storage');
+const { getDoc, setDoc, deleteDoc } = require('../middleware/db');
 
 // Configure cloudinary using CLOUDINARY_URL if it exists in env
 // Or using individual keys if provided
@@ -183,24 +184,35 @@ router.post('/', upload.single('file'), async (req, res) => {
 const mobileUploadSessions = new Map();
 
 // Polled by the laptop
-router.get('/session/:sessionId', (req, res) => {
+router.get('/session/:sessionId', async (req, res) => {
   const { sessionId } = req.params;
-  if (!mobileUploadSessions.has(sessionId)) {
-    return res.json({ status: 'pending' });
+  try {
+    // 1. Check in-memory map first (instant if same instance)
+    if (mobileUploadSessions.has(sessionId)) {
+      const data = mobileUploadSessions.get(sessionId);
+      if (data.status === 'completed' && data.urls && data.urls.length > 0) {
+        mobileUploadSessions.delete(sessionId);
+        try { await deleteDoc('upload_sessions', sessionId); } catch (e) {}
+        return res.json({ status: 'completed', urls: data.urls });
+      }
+    }
+    
+    // 2. Check Neon Postgres DB (persistent across all serverless lambda instances)
+    const dbSession = await getDoc('upload_sessions', sessionId);
+    if (dbSession && dbSession.status === 'completed' && dbSession.urls && dbSession.urls.length > 0) {
+      try { await deleteDoc('upload_sessions', sessionId); } catch (e) {}
+      return res.json({ status: 'completed', urls: dbSession.urls });
+    }
+    
+    res.json({ status: 'pending' });
+  } catch (err) {
+    console.error('Session get error:', err);
+    res.json({ status: 'pending' });
   }
-  
-  const data = mobileUploadSessions.get(sessionId);
-  if (data.status === 'completed') {
-    // We optionally remove the session after retrieving to clean up memory
-    mobileUploadSessions.delete(sessionId);
-    return res.json({ status: 'completed', urls: data.urls });
-  }
-  
-  res.json({ status: 'pending' });
 });
 
-// Hit by the mobile phone after uploading to Cloudinary/ImgBB
-router.post('/session/:sessionId', express.json(), (req, res) => {
+// Hit by the mobile phone after uploading to Cloudinary
+router.post('/session/:sessionId', express.json(), async (req, res) => {
   const { sessionId } = req.params;
   const { urls } = req.body;
   
@@ -208,7 +220,20 @@ router.post('/session/:sessionId', express.json(), (req, res) => {
     return res.status(400).json({ error: 'Valid urls array is required' });
   }
 
+  // 1. Store in memory
   mobileUploadSessions.set(sessionId, { status: 'completed', urls });
+
+  // 2. Store in Postgres DB
+  try {
+    await setDoc('upload_sessions', sessionId, {
+      status: 'completed',
+      urls,
+      createdAt: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('Session DB save error:', err);
+  }
+
   res.json({ success: true, message: 'Sent to laptop successfully' });
 });
 
