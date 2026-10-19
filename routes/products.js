@@ -108,13 +108,27 @@ router.get('/auto-desc/:clothType', (req, res) => {
 });
 
 // ─── GET single product ──────────────────────────────────────
-router.get('/:id', cache('5 minutes', shouldCache), async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    if (req.headers.authorization || req.query._t) {
+    const isAdmin = Boolean(req.headers.authorization || req.cookies?.dn_admin_token || req.query._t || req.query.admin);
+    if (isAdmin) {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
     }
+
+    const cacheKey = `product_${req.params.id}`;
+    if (!isAdmin) {
+      const cached = await getCache(cacheKey);
+      if (cached) return res.json(cached);
+    }
+
     const product = await getDoc('products', req.params.id);
     if (!product) return res.status(404).json({ error: 'Product not found' });
+
+    if (!isAdmin) {
+      await setCache(cacheKey, product, 180);
+    }
     res.json(product);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
