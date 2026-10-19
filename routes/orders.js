@@ -4,7 +4,7 @@ const XLSX = require('xlsx');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { getCollection, getDoc, addDoc, setDoc, deleteDoc, pgPool } = require('../middleware/db');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, customerAuthMiddleware } = require('../middleware/auth');
 
 // Simple in-memory rate limiter to prevent fake order spam (3 orders per 24hrs per IP)
 const orderRateLimits = new Map();
@@ -62,7 +62,7 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 // ─── GET logged-in user's orders ──────────────────────────────
-router.get('/my-orders', authMiddleware, async (req, res) => {
+router.get('/my-orders', customerAuthMiddleware, async (req, res) => {
   try {
     const userEmail = req.user.email ? req.user.email.toLowerCase() : req.user.id.toLowerCase();
     
@@ -187,12 +187,14 @@ router.get('/:id', async (req, res) => {
 // ─── POST create order (from frontend checkout) ──────────────
 router.post('/', async (req, res) => {
   try {
-    const { customer, items, subtotal, discount, delivery, total, paymentMethod, paymentStatus, promoCode } = req.body;
+    const { customer, items, discount, paymentMethod, paymentStatus, promoCode } = req.body;
 
     // Validate mandatory customer fields
     const required = ['name', 'phone', 'address', 'pincode'];
     for (const f of required) {
-      if (!customer?.[f]) return res.status(400).json({ error: `Customer ${f} is required` });
+      if (!customer?.[f] || !String(customer[f]).trim()) {
+        return res.status(400).json({ error: `Customer ${f} is required` });
+      }
     }
 
     // Validate phone and pincode strictly
@@ -206,6 +208,10 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Please enter a valid 6-digit Pincode.' });
     }
 
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Order must contain at least one product.' });
+    }
+
     // Basic IP Rate Limiting (Prevent bot spam/fake orders)
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const nowMs = Date.now();
@@ -213,8 +219,8 @@ router.post('/', async (req, res) => {
     
     if (orderRateLimits.has(ip)) {
       const history = orderRateLimits.get(ip).filter(t => nowMs - t < limitWindow);
-      if (history.length >= 3) {
-        return res.status(429).json({ error: 'Too many orders placed today. Please try again tomorrow.' });
+      if (history.length >= 10) {
+        return res.status(429).json({ error: 'Daily order limit reached. Please contact support if you need assistance.' });
       }
       history.push(nowMs);
       orderRateLimits.set(ip, history);
@@ -222,22 +228,66 @@ router.post('/', async (req, res) => {
       orderRateLimits.set(ip, [nowMs]);
     }
 
+    // ─── SECURITY: Server-side Price Verification & Anti-Tampering ───
+    let serverCalculatedSubtotal = 0;
+    const verifiedItems = [];
+
+    for (const item of items) {
+      const pId = item.productId || item.id;
+      if (!pId) continue;
+
+      const qty = Math.max(1, Math.min(50, parseInt(item.quantity) || 1));
+      const dbProduct = await getDoc('products', pId);
+
+      // Enforce true catalog price from DB (prevents tampering)
+      const realPrice = dbProduct && !isNaN(Number(dbProduct.price)) 
+        ? Number(dbProduct.price) 
+        : Math.max(0, Number(item.price) || 0);
+
+      serverCalculatedSubtotal += realPrice * qty;
+
+      verifiedItems.push({
+        productId: String(pId),
+        productName: String(dbProduct?.name || item.productName || item.name || 'Product').slice(0, 150),
+        price: realPrice,
+        quantity: qty,
+        selectedSize: item.selectedSize ? String(item.selectedSize).slice(0, 20) : null,
+        selectedColor: item.selectedColor ? String(item.selectedColor).slice(0, 30) : null,
+        image: dbProduct?.images?.[0] || item.image || null
+      });
+    }
+
+    const verifiedSubtotal = serverCalculatedSubtotal;
+    const verifiedDelivery = verifiedSubtotal >= 399 ? 0 : 50;
+    const verifiedDiscount = Math.max(0, Number(discount) || 0);
+    const verifiedTotal = Math.max(0, verifiedSubtotal + verifiedDelivery - verifiedDiscount);
+
+    const sanitizedCustomer = {
+      name: String(customer.name).trim().slice(0, 100),
+      phone: phoneStr,
+      email: customer.email ? String(customer.email).trim().toLowerCase().slice(0, 100) : '',
+      address: String(customer.address).trim().slice(0, 300),
+      city: String(customer.city || '').trim().slice(0, 100),
+      state: String(customer.state || '').trim().slice(0, 100),
+      pincode: pinStr
+    };
+
     const now = new Date();
     const id = `ORD-${Date.now()}`;
     const orderData = {
       createdAt: now.toISOString(),
       date: now.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }),
       time: now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }),
-      customer,
-      items,
-      subtotal,
-      discount: discount || 0,
-      delivery: delivery || 0,
-      total,
+      customer: sanitizedCustomer,
+      items: verifiedItems,
+      subtotal: verifiedSubtotal,
+      discount: verifiedDiscount,
+      delivery: verifiedDelivery,
+      total: verifiedTotal,
       paymentMethod: paymentMethod || 'Razorpay',
       paymentStatus: paymentStatus || 'Pending',
       orderStatus: 'Pending',
-      promoCode: promoCode || null,
+      promoCode: promoCode ? String(promoCode).trim().slice(0, 20) : null,
       notes: '',
     };
 
@@ -481,14 +531,17 @@ router.post('/:id/verify-razorpay', async (req, res) => {
       return res.status(500).json({ error: 'Razorpay secret is not configured' });
     }
 
-    // Verify HMAC-SHA256 signature
+    // Verify HMAC-SHA256 signature using timing-safe comparison
     const body = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSignature = crypto
       .createHmac('sha256', keySecret)
       .update(body.toString())
       .digest('hex');
 
-    if (expectedSignature !== razorpay_signature) {
+    const expectedBuf = Buffer.from(expectedSignature, 'utf8');
+    const providedBuf = Buffer.from(String(razorpay_signature), 'utf8');
+
+    if (expectedBuf.length !== providedBuf.length || !crypto.timingSafeEqual(expectedBuf, providedBuf)) {
       return res.status(400).json({ error: 'Payment verification failed: Invalid signature' });
     }
 

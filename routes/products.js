@@ -244,21 +244,40 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 });
 
 // ─── POST add review ─────────────────────────────────────────
-router.post('/:id/reviews', authMiddleware, async (req, res) => {
+router.post('/:id/reviews', async (req, res) => {
   try {
     const { rating, comment, userName, image } = req.body;
-    if (!rating || !comment) return res.status(400).json({ error: 'Rating and comment are required' });
+    const numRating = Number(rating);
+    if (!rating || isNaN(numRating) || numRating < 1 || numRating > 5) {
+      return res.status(400).json({ error: 'Valid rating between 1 and 5 is required' });
+    }
+    if (!comment || typeof comment !== 'string' || !comment.trim()) {
+      return res.status(400).json({ error: 'Review comment is required' });
+    }
+
+    const cleanComment = comment.trim().slice(0, 1000).replace(/[<>]/g, '');
+    const cleanUserName = userName ? String(userName).trim().slice(0, 50).replace(/[<>]/g, '') : 'Verified Customer';
 
     const product = await getDoc('products', req.params.id);
     if (!product) return res.status(404).json({ error: 'Product not found' });
 
+    let userId = 'customer';
+    try {
+      const token = req.cookies?.dn_customer_token || req.headers.authorization?.split(' ')[1];
+      if (token) {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dn_shoppy_jwt_secret_production_2026');
+        if (decoded?.id) userId = decoded.id;
+      }
+    } catch (_) {}
+
     const newReview = {
-      id: `REV-${Date.now()}`,
-      userId: req.user.id || req.user.email,
-      userName: userName || req.user.name || 'Anonymous',
-      rating: Number(rating),
-      comment,
-      image: image || null,
+      id: `REV-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      userId,
+      userName: cleanUserName,
+      rating: numRating,
+      comment: cleanComment,
+      image: typeof image === 'string' && (image.startsWith('http') || image.startsWith('/uploads/')) ? image : null,
       date: new Date().toLocaleDateString('en-IN')
     };
 
@@ -295,15 +314,16 @@ router.delete('/:id/reviews/:reviewId', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Review not found' });
     }
 
-    // Check if the user owns the review or is an admin
+    // Check if the user owns the review or is an admin/staff
     const review = existingReviews[reviewIndex];
-    if (review.userId !== (req.user.id || req.user.email) && req.user.role !== 'admin') {
+    const isPrivileged = ['super_admin', 'admin', 'staff'].includes(req.user?.role);
+    if (review.userId !== (req.user?.id || req.user?.email) && !isPrivileged) {
       return res.status(403).json({ error: 'Unauthorized to delete this review' });
     }
 
     // Delete image if exists
     if (review.image) {
-      await deleteImage(review.image);
+      await deleteImage(review.image).catch(() => {});
     }
 
     // Remove the review

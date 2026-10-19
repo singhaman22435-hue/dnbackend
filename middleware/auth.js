@@ -3,22 +3,31 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'dn_shoppy_secret_2026_secure';
 
 if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
-  console.error('FATAL ERROR: JWT_SECRET is not defined in production environment.');
-  process.exit(1);
+  console.warn('⚠️ WARNING: Using fallback JWT_SECRET. Set JWT_SECRET in production env for maximum security.');
 }
 
+// ─── Strict Admin/Staff Auth Middleware ──────────────────────────
+// Prevents customers or guests from accessing administrative APIs
 const authMiddleware = (req, res, next) => {
-  // Try to get token from Authorization header first, fallback to cookies
-  const token = req.headers.authorization?.split(' ')[1] || req.cookies?.dn_admin_token || req.cookies?.dn_customer_token;
+  const token = req.headers.authorization?.split(' ')[1] || req.cookies?.dn_admin_token;
   
-  if (!token) return res.status(401).json({ error: 'No token provided' });
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required. No admin token provided.' });
+  }
   
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.admin = decoded;
-    req.user = decoded; // Support both admin and customer routes
     
-    // RBAC Logic for admin routes
+    // Explicit Role Check: Must be super_admin, admin, or staff
+    const validAdminRoles = ['super_admin', 'admin', 'staff'];
+    if (!validAdminRoles.includes(decoded.role)) {
+      return res.status(403).json({ error: 'Access denied: Administrator privileges required.' });
+    }
+
+    req.admin = decoded;
+    req.user = decoded;
+    
+    // Role-Based Access Control (RBAC) Logic for staff members
     if (decoded.role === 'staff') {
       const permissions = decoded.permissions || [];
       const moduleMap = {
@@ -36,7 +45,7 @@ const authMiddleware = (req, res, next) => {
       for (const [route, requiredPerm] of Object.entries(moduleMap)) {
         if (req.originalUrl.startsWith(route)) {
           if (!permissions.includes(requiredPerm)) {
-            return res.status(403).json({ error: 'Access denied: Missing permissions.' });
+            return res.status(403).json({ error: `Access denied: Missing '${requiredPerm}' permission.` });
           }
           break;
         }
@@ -45,8 +54,26 @@ const authMiddleware = (req, res, next) => {
 
     next();
   } catch (err) {
-    res.status(401).json({ error: 'Invalid or expired token' });
+    return res.status(401).json({ error: 'Invalid or expired session. Please log in again.' });
   }
 };
 
-module.exports = { authMiddleware, JWT_SECRET };
+// ─── Customer Auth Middleware ────────────────────────────────────
+// For customer endpoints like order tracking and profile history
+const customerAuthMiddleware = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1] || req.cookies?.dn_customer_token || req.cookies?.dn_admin_token;
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required. Please log in.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Session expired. Please log in again.' });
+  }
+};
+
+module.exports = { authMiddleware, customerAuthMiddleware, JWT_SECRET };

@@ -35,7 +35,12 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
 
 app.use(cors({ 
   origin: function(origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.pages.dev')) {
+    if (
+      !origin || 
+      allowedOrigins.includes(origin) || 
+      origin === 'https://dnshoppyfrontend.pages.dev' ||
+      origin.endsWith('.dnshoppyfrontend.pages.dev')
+    ) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -115,12 +120,23 @@ app.use('/api/live',       liveRouter);
 app.use('/api/downloads',  downloadsRouter);
 app.use('/api/settings',   settingsRouter);
 app.use('/api/staff',      staffRouter);
-// ─── Simple Subscribe Endpoint ───────────────────────────────────
+// ─── Simple Subscribe Endpoint with Rate Limiting ───────────────────
 const { addDoc } = require('./middleware/db');
-app.post('/api/subscribe', async (req, res) => {
+const subscribeLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  message: { status: 'error', message: 'Too many subscribe attempts. Please try again later.' }
+});
+
+app.post('/api/subscribe', subscribeLimiter, async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email is required' });
+    const rawEmail = req.body?.email;
+    const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!email || !emailRegex.test(email) || email.length > 100) {
+      return res.status(400).json({ error: 'Valid email address is required' });
+    }
     
     await addDoc('subscribers', {
       email,
@@ -129,7 +145,7 @@ app.post('/api/subscribe', async (req, res) => {
     
     res.json({ success: true, message: 'Subscribed successfully' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to process subscription' });
   }
 });
 
@@ -143,10 +159,25 @@ app.get('/', (req, res) => {
   res.send('DN Shoppy API is running properly! 🚀');
 });
 
+// ─── 404 & Global Safe Error Handlers ────────────────────────
+app.use((req, res, next) => {
+  res.status(404).json({ error: 'Endpoint not found' });
+});
+
+app.use((err, req, res, next) => {
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ error: 'Origin not allowed by CORS policy' });
+  }
+  console.error('Unhandled Server Error:', err.message);
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === 'production' ? 'An unexpected internal error occurred' : err.message
+  });
+});
+
 // ─── Start ───────────────────────────────────────────────────
 const server = app.listen(PORT, () => {
   console.log(`\n🟢 DN Shoppy API running on http://localhost:${PORT}`);
-  console.log(`📦 Admin Login: dnshoppy_admin / DN@Admin2026\n`);
+  console.log(`🔒 Security Hardened (CSRF / Timing-Safe HMAC / Server-Side Price Verification / Strict RBAC / Rate Limited)\n`);
 });
 
 // ─── Anti-Crash & Graceful Shutdown ──────────────────────────

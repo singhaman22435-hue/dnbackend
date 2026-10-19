@@ -40,9 +40,33 @@ const storage = multer.diskStorage({
   }
 });
 
+// Allowed extensions & mime types for security
+const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.avif', '.gif', '.mp4', '.webm']);
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'image/gif',
+  'video/mp4',
+  'video/webm'
+]);
+
+const fileFilter = (req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  const mime = (file.mimetype || '').toLowerCase();
+
+  if (ALLOWED_EXTENSIONS.has(ext) && ALLOWED_MIME_TYPES.has(mime)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Security Error: Only image (JPEG, PNG, WebP) and video (MP4, WebM) files are permitted.'));
+  }
+};
+
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+  fileFilter: fileFilter,
+  limits: { fileSize: 15 * 1024 * 1024 } // 15MB limit
 });
 
 router.post('/', upload.single('file'), async (req, res) => {

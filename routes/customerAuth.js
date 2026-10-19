@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const db = require('../middleware/db');
-const { JWT_SECRET, authMiddleware } = require('../middleware/auth');
+const { JWT_SECRET, customerAuthMiddleware } = require('../middleware/auth');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || 'dummy_client_id');
 
@@ -12,6 +12,9 @@ const sanitizeUser = (user) => {
   const { passwordHash, ...safeUser } = user;
   return safeUser;
 };
+
+// Safe string sanitizer
+const cleanStr = (val) => typeof val === 'string' ? val.trim().replace(/[<>]/g, '') : val;
 
 // POST /api/customerAuth/register
 router.post('/register', async (req, res) => {
@@ -22,12 +25,19 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Name, phone number, and password are required' });
     }
 
+    const cleanPhone = String(phone).trim().replace(/[^0-9+]/g, '');
+    const cleanName = cleanStr(name);
+
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
+    if (!cleanPhone || cleanPhone.length < 10) {
+      return res.status(400).json({ error: 'Please enter a valid phone number' });
+    }
+
     // Check if user exists (using phone as the ID for customers collection)
-    const existingUser = await db.getDoc('customers', phone);
+    const existingUser = await db.getDoc('customers', cleanPhone);
     if (existingUser) {
       return res.status(409).json({ error: 'Phone number is already registered' });
     }
@@ -37,9 +47,9 @@ router.post('/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, salt);
 
     const newUser = {
-      id: phone,
-      name,
-      phone: phone,
+      id: cleanPhone,
+      name: cleanName,
+      phone: cleanPhone,
       passwordHash,
       createdAt: new Date().toISOString(),
       role: 'customer'
@@ -57,8 +67,8 @@ router.post('/register', async (req, res) => {
 
     res.cookie('dn_customer_token', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
 
@@ -82,8 +92,10 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Phone number and password are required' });
     }
 
+    const cleanPhone = String(phone).trim().replace(/[^0-9+]/g, '');
+
     // Find user
-    const user = await db.getDoc('customers', phone);
+    const user = await db.getDoc('customers', cleanPhone);
     if (!user) {
       return res.status(401).json({ error: 'Invalid phone number or password' });
     }
@@ -103,8 +115,8 @@ router.post('/login', async (req, res) => {
 
     res.cookie('dn_customer_token', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
 
@@ -123,8 +135,8 @@ router.post('/login', async (req, res) => {
 router.post('/logout', (req, res) => {
   res.clearCookie('dn_customer_token', {
     httpOnly: true,
-    secure: true,
-    sameSite: 'none',
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   });
   res.json({ success: true, message: 'Logged out successfully' });
 });
@@ -160,15 +172,17 @@ router.post('/google', async (req, res) => {
     try {
       const ticket = await googleClient.verifyIdToken({
         idToken: token,
-        // audience: process.env.GOOGLE_CLIENT_ID // Specify the CLIENT_ID of the app that accesses the backend
+        audience: process.env.GOOGLE_CLIENT_ID || undefined
       });
       payload = ticket.getPayload();
     } catch (err) {
-      console.error('Google Verify Error:', err);
-      // In development if VITE_GOOGLE_CLIENT_ID is just a placeholder, we decode manually 
-      // ONLY DO THIS FOR DEMO. IN PROD, MUST VERIFY!
+      if (process.env.NODE_ENV === 'production') {
+        console.error('Google Verify Failed in Production:', err.message);
+        return res.status(401).json({ error: 'Invalid Google authentication token' });
+      }
+      // Non-production fallback only
       payload = jwt.decode(token);
-      if (!payload) return res.status(401).json({ error: 'Invalid Google token' });
+      if (!payload || !payload.email) return res.status(401).json({ error: 'Invalid Google token' });
     }
 
     const email = payload.email.toLowerCase();
@@ -180,7 +194,7 @@ router.post('/google', async (req, res) => {
       // Create new user (no passwordHash since they log in with Google)
       user = {
         id: email,
-        name,
+        name: cleanStr(name),
         email,
         createdAt: new Date().toISOString(),
         role: 'customer',
@@ -197,6 +211,13 @@ router.post('/google', async (req, res) => {
       { expiresIn: '30d' }
     );
 
+    res.cookie('dn_customer_token', sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000
+    });
+
     res.json({
       token: sessionToken,
       user: sanitizeUser(user)
@@ -208,7 +229,7 @@ router.post('/google', async (req, res) => {
 });
 
 // PUT /api/customerAuth/profile
-router.put('/profile', authMiddleware, async (req, res) => {
+router.put('/profile', customerAuthMiddleware, async (req, res) => {
   try {
     const { phone, address, city, state, pincode } = req.body;
     const userId = req.user.id;
@@ -218,14 +239,14 @@ router.put('/profile', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Update fields
+    // Update fields with sanitization
     user = {
       ...user,
-      phone: phone !== undefined ? phone : user.phone,
-      address: address !== undefined ? address : user.address,
-      city: city !== undefined ? city : user.city,
-      state: state !== undefined ? state : user.state,
-      pincode: pincode !== undefined ? pincode : user.pincode
+      phone: phone !== undefined ? cleanStr(phone) : user.phone,
+      address: address !== undefined ? cleanStr(address) : user.address,
+      city: city !== undefined ? cleanStr(city) : user.city,
+      state: state !== undefined ? cleanStr(state) : user.state,
+      pincode: pincode !== undefined ? cleanStr(pincode) : user.pincode
     };
 
     await db.setDoc('customers', userId, user);

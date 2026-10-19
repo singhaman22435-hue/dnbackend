@@ -36,12 +36,17 @@ router.put('/:id', authMiddleware, async (req, res) => {
     const product = await getDoc('products', req.params.id);
     if (!product) return res.status(404).json({ error: 'Product not found' });
     
-    await setDoc('products', req.params.id, { 
-      stock: req.body.stock, 
-      updatedAt: new Date().toISOString() 
-    });
+    const validStock = Math.max(0, parseInt(req.body.stock, 10) || 0);
+
+    const updatedProduct = {
+      ...product,
+      stock: validStock,
+      updatedAt: new Date().toISOString()
+    };
+
+    await setDoc('products', req.params.id, updatedProduct);
     
-    res.json({ id: req.params.id, stock: req.body.stock });
+    res.json({ id: req.params.id, stock: validStock, success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
