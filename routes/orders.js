@@ -258,7 +258,7 @@ router.post('/', async (req, res) => {
     }
 
     const verifiedSubtotal = serverCalculatedSubtotal;
-    const verifiedDelivery = verifiedSubtotal >= 399 ? 0 : 50;
+    const verifiedDelivery = verifiedSubtotal >= 399 ? 0 : 90;
     const verifiedDiscount = Math.max(0, Number(discount) || 0);
     const verifiedTotal = Math.max(0, verifiedSubtotal + verifiedDelivery - verifiedDiscount);
 
