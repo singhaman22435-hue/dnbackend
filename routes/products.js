@@ -86,10 +86,57 @@ router.get('/', async (req, res) => {
     if (category) products = products.filter(p => p.category === category);
     if (status) products = products.filter(p => p.status === status);
     if (search) {
-      const q = search.toLowerCase();
-      products = products.filter(p =>
-        (p.name && p.name.toLowerCase().includes(q)) || (p.id && p.id.toLowerCase().includes(q))
-      );
+      const decodedSearch = (() => {
+        try { return decodeURIComponent(search).replace(/\+/g, ' '); } catch (e) { return search.replace(/\+/g, ' '); }
+      })();
+      const rawQ = decodedSearch.toLowerCase().trim();
+      const tokens = rawQ.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+
+      const scored = [];
+      for (const p of products) {
+        const id = (p.id || '').toLowerCase();
+        const name = (p.name || '').toLowerCase();
+        const cat = (p.category || '').toLowerCase();
+        const type = (p.type || '').toLowerCase();
+        const cloth = (p.clothType || '').toLowerCase();
+        const tags = Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase() : '';
+        const desc = (p.description || '').toLowerCase();
+        const mat = (p.material || '').toLowerCase();
+
+        let score = 0;
+        if (id === rawQ) score += 1000;
+        else if (id.includes(rawQ)) score += 500;
+
+        if (name === rawQ) score += 800;
+        else if (name.startsWith(rawQ)) score += 400;
+        else if (name.includes(rawQ)) score += 200;
+
+        if (cat === rawQ) score += 300;
+        if (type === rawQ || cloth === rawQ) score += 250;
+
+        let matchedTokens = 0;
+        for (const t of tokens) {
+          let m = false;
+          if (id.includes(t)) { score += 150; m = true; }
+          if (name.includes(t)) { score += 120; m = true; }
+          if (cat.includes(t)) { score += 90; m = true; }
+          if (type.includes(t) || cloth.includes(t)) { score += 80; m = true; }
+          if (tags.includes(t)) { score += 60; m = true; }
+          if (mat.includes(t) || desc.includes(t)) { score += 30; m = true; }
+          if (m) matchedTokens++;
+        }
+
+        if (matchedTokens === tokens.length && tokens.length > 1) {
+          score += 350;
+        }
+
+        if (score > 25) {
+          scored.push({ p, score });
+        }
+      }
+
+      scored.sort((a, b) => b.score - a.score);
+      products = scored.map(item => item.p);
     }
 
     if (!isAdmin) {
