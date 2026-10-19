@@ -112,10 +112,27 @@ const seedCategories = async () => {
 
 setTimeout(seedCategories, 1000); // Give time for db to init
 
+const { getCache, setCache, deleteCache } = require('../utils/cache');
+
 // GET all categories
-router.get('/', cache('5 minutes'), async (req, res) => {
+router.get('/', async (req, res) => {
   try {
+    const isAdmin = Boolean(req.headers.authorization || req.cookies?.dn_admin_token || req.query._t || req.query.admin);
+    if (isAdmin) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+    }
+
+    if (!isAdmin) {
+      const cached = await getCache('categories_all');
+      if (cached) return res.json(cached);
+    }
+
     const categories = await getCollection('categories');
+    if (!isAdmin) {
+      await setCache('categories_all', categories, 300); // 5 min TTL
+    }
     res.json(categories);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -126,6 +143,7 @@ router.post('/', authMiddleware, async (req, res) => {
     const id = req.body.slug || `cat_${Date.now()}`;
     const saved = await addDoc('categories', catData, id);
     apicache.clear();
+    await deleteCache('categories');
     res.status(201).json(saved);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -150,6 +168,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
 
     const updated = await setDoc('categories', req.params.id, updateData);
     apicache.clear();
+    await deleteCache('categories');
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -176,6 +195,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 
     await deleteDoc('categories', req.params.id);
     apicache.clear();
+    await deleteCache('categories');
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

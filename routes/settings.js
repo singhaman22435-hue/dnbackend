@@ -1,17 +1,20 @@
 const router = require('express').Router();
 const { getDoc, setDoc } = require('../middleware/db');
 const { authMiddleware } = require('../middleware/auth');
+const { getCache, setCache, deleteCache } = require('../utils/cache');
 const jwt = require('jsonwebtoken');
 
 // GET hero settings (public)
 router.get('/hero', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+    const cached = await getCache('settings_hero');
+    if (cached) return res.json(cached);
+
     const heroSettings = await getDoc('settings', 'hero');
-    if (heroSettings) {
-      res.json(heroSettings.slides || []);
-    } else {
-      res.json([]);
-    }
+    const slides = heroSettings ? (heroSettings.slides || []) : [];
+    await setCache('settings_hero', slides, 300);
+    res.json(slides);
   } catch (err) {
     console.error("Error fetching hero settings:", err);
     res.status(500).json({ error: 'Server error fetching settings' });
@@ -31,6 +34,7 @@ router.post('/hero', authMiddleware, async (req, res) => {
     }
 
     await setDoc('settings', 'hero', { slides });
+    await deleteCache('settings_hero');
     res.json({ success: true, message: 'Hero settings updated successfully' });
   } catch (err) {
     console.error("Error saving hero settings:", err);
@@ -41,16 +45,18 @@ router.post('/hero', authMiddleware, async (req, res) => {
 // GET lookbook settings (public)
 router.get('/lookbook', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+    const cached = await getCache('settings_lookbook');
+    if (cached) return res.json(cached);
+
     const lookbookSettings = await getDoc('settings', 'lookbook');
-    if (lookbookSettings) {
-      res.json(lookbookSettings);
-    } else {
-      res.json({
-        image1: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&q=80',
-        image2: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=80',
-        image3: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=800&q=80'
-      });
-    }
+    const data = lookbookSettings || {
+      image1: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&q=80',
+      image2: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=80',
+      image3: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=800&q=80'
+    };
+    await setCache('settings_lookbook', data, 300);
+    res.json(data);
   } catch (err) {
     console.error("Error fetching lookbook settings:", err);
     res.status(500).json({ error: 'Server error fetching settings' });
@@ -67,6 +73,7 @@ router.post('/lookbook', authMiddleware, async (req, res) => {
     const { image1, image2, image3 } = req.body;
     
     await setDoc('settings', 'lookbook', { image1, image2, image3 });
+    await deleteCache('settings_lookbook');
     res.json({ success: true, message: 'Lookbook settings updated successfully' });
   } catch (err) {
     console.error("Error saving lookbook settings:", err);

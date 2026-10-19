@@ -59,22 +59,30 @@ const seedProducts = async () => {
 
 setTimeout(seedProducts, 1000);
 
-// Only cache public customer GET requests, never admin or timestamped requests
-const shouldCache = (req, res) => {
-  if (req.headers.authorization || req.cookies?.dn_admin_token || req.query._t || req.query.admin) {
-    return false;
-  }
-  return res.statusCode === 200;
-};
+const { getCache, setCache, deleteCache } = require('../utils/cache');
 
 // ─── GET all products ────────────────────────────────────────
-router.get('/', cache('5 minutes', shouldCache), async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    if (req.headers.authorization || req.query._t) {
+    const isAdmin = Boolean(req.headers.authorization || req.cookies?.dn_admin_token || req.query._t || req.query.admin);
+    
+    if (isAdmin) {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
     }
-    let products = await getCollection('products');
+
     const { category, search, status } = req.query;
+    const cacheKey = `products_${category || 'all'}_${status || 'all'}_${search || 'all'}`;
+
+    if (!isAdmin) {
+      const cached = await getCache(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+    }
+
+    let products = await getCollection('products');
     if (category) products = products.filter(p => p.category === category);
     if (status) products = products.filter(p => p.status === status);
     if (search) {
@@ -83,6 +91,11 @@ router.get('/', cache('5 minutes', shouldCache), async (req, res) => {
         (p.name && p.name.toLowerCase().includes(q)) || (p.id && p.id.toLowerCase().includes(q))
       );
     }
+
+    if (!isAdmin) {
+      await setCache(cacheKey, products, 180); // 3 min cache in memory/redis
+    }
+
     res.json(products);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -118,7 +131,8 @@ router.post('/', authMiddleware, async (req, res) => {
       status: req.body.status || 'active',
     };
     const saved = await addDoc('products', newProduct, id);
-    apicache.clear(); // Clear cache on update
+    apicache.clear();
+    await deleteCache('products');
     res.status(201).json(saved);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -141,7 +155,8 @@ router.put('/:id', authMiddleware, async (req, res) => {
     }
 
     const updated = await setDoc('products', req.params.id, updateData);
-    apicache.clear(); // Clear cache on update
+    apicache.clear();
+    await deleteCache('products');
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -159,7 +174,8 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     }
     
     await deleteDoc('products', req.params.id);
-    apicache.clear(); // Clear cache on update
+    apicache.clear();
+    await deleteCache('products');
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
