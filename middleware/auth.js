@@ -37,7 +37,6 @@ const authMiddleware = (req, res, next) => {
         '/api/promos': 'promotions',
         '/api/live': 'live',
         '/api/inventory': 'inventory',
-        '/api/reviews': 'reviews',
         '/api/users': 'users',
         '/api/settings': 'settings'
       };

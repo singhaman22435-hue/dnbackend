@@ -6,14 +6,14 @@ const apicache = require('apicache');
 const cache = apicache.middleware;
 
 const CATEGORY_IMAGES = {
-  'saree': 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&q=80',
-  'gowns': 'https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=800&q=80',
-  'womans-jeans': 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=800&q=80',
-  'others': 'https://images.unsplash.com/photo-1584916201218-f4242ceb4809?w=800&q=80',
-  'dress': 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800&q=80',
-  'blouse': 'https://images.unsplash.com/photo-1603204077874-ce419f8dd0e1?w=800&q=80',
-  'mens-wear': 'https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?w=800&q=80',
-  'jewellery': 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&q=80'
+  'saree': 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1200&q=85',
+  'dress': 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=1200&q=85',
+  'jewellery': 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=1200&q=85',
+  'gowns': 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=1200&q=85',
+  'mens-wear': 'https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&w=1200&q=85',
+  'blouse': 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1200&q=85',
+  'womans-jeans': 'https://images.unsplash.com/photo-1584370848010-d7fe6bc767ec?auto=format&fit=crop&w=1200&q=85',
+  'others': 'https://images.unsplash.com/photo-1584916201218-f4242ceb4809?auto=format&fit=crop&w=1200&q=85'
 };
 
 const TYPE_IMAGES = {
@@ -143,6 +143,7 @@ router.post('/', authMiddleware, async (req, res) => {
     const id = req.body.slug || `cat_${Date.now()}`;
     const saved = await addDoc('categories', catData, id);
     apicache.clear();
+    await deleteCache('categories_all');
     await deleteCache('categories');
     res.status(201).json(saved);
   } catch (err) {
@@ -168,6 +169,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
 
     const updated = await setDoc('categories', req.params.id, updateData);
     apicache.clear();
+    await deleteCache('categories_all');
     await deleteCache('categories');
     res.json(updated);
   } catch (err) {
