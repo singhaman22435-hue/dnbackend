@@ -7,17 +7,6 @@ const jwt = require('jsonwebtoken');
 const defaultHeroSlides = [
   {
     id: 1,
-    image: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793024141/dnshoppy_hero/hrfcjnzhwyfpwm5vpcwb.jpg',
-    mobileImage: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793030933/dnshoppy_hero/hero_mobile_1_v3.jpg',
-    eyebrow: '👑 Direct Store Collection 2026',
-    title: 'Grace & Heritage',
-    subtitle: "Sangrul, Kolhapur's most trusted destination for handcrafted bridal sarees and festive fashion.",
-    cta: 'Explore Sarees',
-    link: '/category/saree',
-    align: 'left'
-  },
-  {
-    id: 2,
     image: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793024186/dnshoppy_hero/mvykozdqcsexefv0othe.jpg',
     mobileImage: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793030935/dnshoppy_hero/hero_mobile_2_v3.jpg',
     eyebrow: '✨ Royal Kolhapuri Touch',
@@ -28,7 +17,7 @@ const defaultHeroSlides = [
     align: 'left'
   },
   {
-    id: 3,
+    id: 2,
     image: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793024189/dnshoppy_hero/ghohmna27iczdxvzkoso.jpg',
     mobileImage: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793030936/dnshoppy_hero/hero_mobile_3_v3.jpg',
     eyebrow: '💎 Premium Jewellery & Sarees',
@@ -36,6 +25,17 @@ const defaultHeroSlides = [
     subtitle: '100% authentic anti-tarnish jewellery, designer nauvari and silk sarees made for you.',
     cta: 'Shop Now',
     link: '/products',
+    align: 'left'
+  },
+  {
+    id: 3,
+    image: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793024141/dnshoppy_hero/hrfcjnzhwyfpwm5vpcwb.jpg',
+    mobileImage: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793030933/dnshoppy_hero/hero_mobile_1_v3.jpg',
+    eyebrow: '👑 Direct Store Collection 2026',
+    title: 'Grace & Heritage',
+    subtitle: "Sangrul, Kolhapur's most trusted destination for handcrafted bridal sarees and festive fashion.",
+    cta: 'Explore Sarees',
+    link: '/category/saree',
     align: 'left'
   }
 ];
