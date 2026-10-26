@@ -4,20 +4,76 @@ const { authMiddleware } = require('../middleware/auth');
 const { getCache, setCache, deleteCache } = require('../utils/cache');
 const jwt = require('jsonwebtoken');
 
+const defaultHeroSlides = [
+  {
+    id: 1,
+    image: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793024141/dnshoppy_hero/hrfcjnzhwyfpwm5vpcwb.jpg',
+    mobileImage: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793024191/dnshoppy_hero/gkgarvzek5mtxmjyzhuc.jpg',
+    eyebrow: '👑 Direct Store Collection 2026',
+    title: 'Grace & Heritage',
+    subtitle: "Sangrul, Kolhapur's most trusted destination for handcrafted bridal sarees and festive fashion.",
+    cta: 'Explore Sarees',
+    link: '/category/saree',
+    align: 'left'
+  },
+  {
+    id: 2,
+    image: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793024186/dnshoppy_hero/mvykozdqcsexefv0othe.jpg',
+    mobileImage: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793024192/dnshoppy_hero/wzlmwvzympogezxofgeh.jpg',
+    eyebrow: '✨ Royal Kolhapuri Touch',
+    title: 'Shine With Elegance',
+    subtitle: 'Celebrate special moments in royal Maharashtrian style with our exclusive jewellery and attire.',
+    cta: 'View Jewellery',
+    link: '/category/jewellery',
+    align: 'left'
+  },
+  {
+    id: 3,
+    image: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793024189/dnshoppy_hero/ghohmna27iczdxvzkoso.jpg',
+    mobileImage: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793024202/dnshoppy_hero/uxdcn8p8mgki7bscqgi2.jpg',
+    eyebrow: '💎 Premium Jewellery & Sarees',
+    title: 'Timeless Celebrations',
+    subtitle: '100% authentic anti-tarnish jewellery, designer nauvari and silk sarees made for you.',
+    cta: 'Shop Now',
+    link: '/products',
+    align: 'left'
+  }
+];
+
 // GET hero settings (public)
 router.get('/hero', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
     const cached = await getCache('settings_hero');
-    if (cached) return res.json(cached);
+    if (cached && Array.isArray(cached) && cached.length > 0) return res.json(cached);
 
     const heroSettings = await getDoc('settings', 'hero');
-    const slides = heroSettings ? (heroSettings.slides || []) : [];
+    let slides = heroSettings && Array.isArray(heroSettings.slides) && heroSettings.slides.length >= 3
+      ? heroSettings.slides
+      : defaultHeroSlides;
+      
+    // Guarantee non-empty titles and valid images
+    slides = slides.map((s, idx) => {
+      const def = defaultHeroSlides[idx % defaultHeroSlides.length];
+      const hasBadImage = !s.image || s.image.includes('qddgcjs6pvajdbvunrqm');
+      return {
+        ...def,
+        ...s,
+        image: hasBadImage ? def.image : s.image,
+        mobileImage: s.mobileImage || def.mobileImage,
+        title: s.title || def.title,
+        eyebrow: s.eyebrow || def.eyebrow,
+        subtitle: s.subtitle || def.subtitle,
+        cta: s.cta || def.cta,
+        link: s.link || def.link,
+      };
+    });
+
     await setCache('settings_hero', slides, 300);
     res.json(slides);
   } catch (err) {
     console.error("Error fetching hero settings:", err);
-    res.status(500).json({ error: 'Server error fetching settings' });
+    res.json(defaultHeroSlides);
   }
 });
 
