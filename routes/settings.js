@@ -8,7 +8,7 @@ const defaultHeroSlides = [
   {
     id: 1,
     image: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793024141/dnshoppy_hero/hrfcjnzhwyfpwm5vpcwb.jpg',
-    mobileImage: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793027518/dnshoppy_hero/hero_mobile_1_v2.jpg',
+    mobileImage: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793030933/dnshoppy_hero/hero_mobile_1_v3.jpg',
     eyebrow: '👑 Direct Store Collection 2026',
     title: 'Grace & Heritage',
     subtitle: "Sangrul, Kolhapur's most trusted destination for handcrafted bridal sarees and festive fashion.",
@@ -19,7 +19,7 @@ const defaultHeroSlides = [
   {
     id: 2,
     image: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793024186/dnshoppy_hero/mvykozdqcsexefv0othe.jpg',
-    mobileImage: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793027526/dnshoppy_hero/hero_mobile_2_v2.jpg',
+    mobileImage: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793030935/dnshoppy_hero/hero_mobile_2_v3.jpg',
     eyebrow: '✨ Royal Kolhapuri Touch',
     title: 'Shine With Elegance',
     subtitle: 'Celebrate special moments in royal Maharashtrian style with our exclusive jewellery and attire.',
@@ -30,7 +30,7 @@ const defaultHeroSlides = [
   {
     id: 3,
     image: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793024189/dnshoppy_hero/ghohmna27iczdxvzkoso.jpg',
-    mobileImage: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793027534/dnshoppy_hero/hero_mobile_3_v2.jpg',
+    mobileImage: 'https://res.cloudinary.com/uje56pqa/image/upload/v1793030936/dnshoppy_hero/hero_mobile_3_v3.jpg',
     eyebrow: '💎 Premium Jewellery & Sarees',
     title: 'Timeless Celebrations',
     subtitle: '100% authentic anti-tarnish jewellery, designer nauvari and silk sarees made for you.',
