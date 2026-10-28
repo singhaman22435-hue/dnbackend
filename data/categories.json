@@ -29,7 +29,7 @@
         "slug": "party-wear"
       }
     ],
-    "image": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1200&q=85"
+    "image": "https://res.cloudinary.com/uje56pqa/image/upload/v1786181413/dnshoppy/oswffkdhnmpfmp4k2k6n.jpg"
   },
   {
     "id": "dress",
@@ -76,7 +76,7 @@
         "slug": "feeding-dress"
       }
     ],
-    "image": "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=1200&q=85"
+    "image": "https://res.cloudinary.com/uje56pqa/image/upload/v1793202468/dnshoppy/cjsbkdpahimlamicy2cm.jpg"
   },
   {
     "id": "gowns",
@@ -113,7 +113,7 @@
         "slug": "smocking"
       }
     ],
-    "image": "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=1200&q=85"
+    "image": "https://res.cloudinary.com/uje56pqa/image/upload/v1793201278/dnshoppy/y5gvanm6reqcgvgj3b7z.jpg"
   },
   {
     "id": "womans-jeans",
@@ -140,7 +140,7 @@
         "slug": "daily-wear"
       }
     ],
-    "image": "https://images.unsplash.com/photo-1584370848010-d7fe6bc767ec?auto=format&fit=crop&w=1200&q=85"
+    "image": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=1200&q=85"
   },
   {
     "id": "blouse",
@@ -157,7 +157,7 @@
         "slug": "blouse-default"
       }
     ],
-    "image": "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1200&q=85"
+    "image": "https://res.cloudinary.com/uje56pqa/image/upload/v1785652471/dnshoppy/ouenngutze64fdt6hctg.jpg"
   },
   {
     "id": "mens-wear",
@@ -194,7 +194,7 @@
         "slug": "other-men"
       }
     ],
-    "image": "https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&w=1200&q=85"
+    "image": "https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?auto=format&fit=crop&w=1200&q=85"
   },
   {
     "id": "jewellery",
