@@ -29,6 +29,11 @@ const authMiddleware = (req, res, next) => {
     
     // Role-Based Access Control (RBAC) Logic for staff members
     if (decoded.role === 'staff') {
+      // Staff is strictly not permitted to delete any data across the system
+      if (req.method === 'DELETE' || req.body?.action === 'delete') {
+        return res.status(403).json({ error: 'Access denied: Staff members are not permitted to delete data.' });
+      }
+
       const permissions = decoded.permissions || [];
       const moduleMap = {
         '/api/orders': 'orders',

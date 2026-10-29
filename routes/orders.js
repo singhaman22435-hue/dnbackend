@@ -362,6 +362,9 @@ router.post('/bulk/action', authMiddleware, async (req, res) => {
     }
 
     if (action === 'delete') {
+      if (req.admin?.role === 'staff') {
+        return res.status(403).json({ error: 'Access denied: Staff members cannot delete orders' });
+      }
       for (const id of ids) {
         await deleteDoc('orders', id);
       }
