@@ -60,6 +60,19 @@ const seedCategories = async () => {
           return type;
         });
       }
+      if (data.slug === 'saree' && data.types && Array.isArray(data.types)) {
+        data.types = data.types.map(type => {
+          if (type.id === 'cutwork' || type.slug === 'cutwork') {
+            updated = true;
+            return { ...type, id: 'kaatpadar', name: 'Kaatpadar', slug: 'kaatpadar' };
+          }
+          if (type.id === 'frill' || type.slug === 'frill') {
+            updated = true;
+            return { ...type, id: 'cotton', name: 'Cotton', slug: 'cotton' };
+          }
+          return type;
+        });
+      }
       if (updated) {
         await setDoc('categories', data.id, data);
         console.log(`Updated images for category: ${data.name}`);
@@ -70,7 +83,7 @@ const seedCategories = async () => {
   const defaults = [
     { 
       id: 'saree', name: 'Sarees', slug: 'saree', emoji: '👘', color: '#D4847A', description: "Woman's Saree", status: 'active', 
-      types: [{ id: 'cutwork', name: 'Cutwork', slug: 'cutwork' }, { id: 'printed', name: 'Printed', slug: 'printed' }, { id: 'frill', name: 'Frill', slug: 'frill' }, { id: 'party-wear', name: 'Party Wear', slug: 'party-wear' }] 
+      types: [{ id: 'kaatpadar', name: 'Kaatpadar', slug: 'kaatpadar' }, { id: 'printed', name: 'Printed', slug: 'printed' }, { id: 'cotton', name: 'Cotton', slug: 'cotton' }, { id: 'party-wear', name: 'Party Wear', slug: 'party-wear' }] 
     },
     { 
       id: 'dress', name: 'Dresses', slug: 'dress', emoji: '👗', color: '#C084A8', description: "Woman's Dress", status: 'active', 

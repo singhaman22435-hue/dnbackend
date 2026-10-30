@@ -9,9 +9,9 @@
     "status": "active",
     "types": [
       {
-        "id": "cutwork",
-        "name": "Cutwork",
-        "slug": "cutwork"
+        "id": "kaatpadar",
+        "name": "Kaatpadar",
+        "slug": "kaatpadar"
       },
       {
         "id": "printed",
@@ -19,9 +19,9 @@
         "slug": "printed"
       },
       {
-        "id": "frill",
-        "name": "Frill",
-        "slug": "frill"
+        "id": "cotton",
+        "name": "Cotton",
+        "slug": "cotton"
       },
       {
         "id": "party-wear",
