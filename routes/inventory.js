@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { getCollection, setDoc, getDoc } = require('../middleware/db');
 const { authMiddleware } = require('../middleware/auth');
+const { deleteCache } = require('../utils/cache');
 
 // GET inventory (products with stock info)
 router.get('/', authMiddleware, async (req, res) => {
@@ -45,6 +46,8 @@ router.put('/:id', authMiddleware, async (req, res) => {
     };
 
     await setDoc('products', req.params.id, updatedProduct);
+    await deleteCache('products');
+    await deleteCache('inventory');
     
     res.json({ id: req.params.id, stock: validStock, success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }

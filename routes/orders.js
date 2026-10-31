@@ -5,6 +5,7 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { getCollection, getDoc, addDoc, setDoc, deleteDoc, pgPool } = require('../middleware/db');
 const { authMiddleware, customerAuthMiddleware } = require('../middleware/auth');
+const { deleteCache } = require('../utils/cache');
 
 // Simple in-memory rate limiter to prevent fake order spam (3 orders per 24hrs per IP)
 const orderRateLimits = new Map();
@@ -18,6 +19,94 @@ async function getRazorpayConfig() {
   const keyId = process.env.RAZORPAY_KEY_ID || PERMANENT_RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET || PERMANENT_RAZORPAY_KEY_SECRET;
   return { keyId: keyId.trim(), keySecret: keySecret.trim() };
+}
+
+// Automatically decrement stock for an order's items and clear products/inventory cache
+async function decrementOrderStock(order) {
+  if (!order || order.stockDecremented) return order;
+  const items = order.items;
+  if (!items || !Array.isArray(items) || items.length === 0) return order;
+
+  let anyUpdated = false;
+  for (const item of items) {
+    const pId = item.productId || item.id;
+    if (!pId) continue;
+
+    try {
+      const product = await getDoc('products', String(pId));
+      if (product) {
+        const updates = {};
+        const qty = Math.max(1, parseInt(item.quantity, 10) || 1);
+
+        // Decrement specific size stock if applicable
+        if (item.selectedSize && product.sizeStock && product.sizeStock[item.selectedSize] !== undefined) {
+          updates.sizeStock = { ...product.sizeStock };
+          updates.sizeStock[item.selectedSize] = Math.max(0, (parseInt(updates.sizeStock[item.selectedSize], 10) || 0) - qty);
+        }
+
+        // Always decrement global stock as fallback/total
+        if (product.stock !== undefined && product.stock !== null && product.stock !== '') {
+          const currentStock = parseInt(product.stock, 10) || 0;
+          updates.stock = Math.max(0, currentStock - qty);
+        }
+
+        if (Object.keys(updates).length > 0) {
+          updates.updatedAt = new Date().toISOString();
+          await setDoc('products', String(pId), { ...product, ...updates });
+          anyUpdated = true;
+        }
+      }
+    } catch (e) {
+      console.error(`Failed to update stock for ${pId}:`, e);
+    }
+  }
+
+  if (anyUpdated) {
+    try {
+      await deleteCache('products');
+      await deleteCache('inventory');
+    } catch (e) {
+      console.error('Error invalidating products cache:', e);
+    }
+  }
+
+  order.stockDecremented = true;
+  await setDoc('orders', order.id, { ...order, stockDecremented: true });
+  return order;
+}
+
+// Verify payment status with Razorpay API directly and mark as Paid if captured
+async function checkAndSyncRazorpayPayment(order) {
+  if (!order || order.paymentStatus === 'Paid' || !order.razorpayOrderId) {
+    return order;
+  }
+
+  try {
+    const { razorpay } = await getRazorpayInstance();
+    const rzpOrder = await razorpay.orders.fetch(order.razorpayOrderId);
+
+    if (rzpOrder && (rzpOrder.status === 'paid' || rzpOrder.amount_paid > 0)) {
+      const payments = await razorpay.orders.fetchPayments(order.razorpayOrderId);
+      const capturedPayment = payments?.items?.find(p => p.status === 'captured') || payments?.items?.[0];
+
+      const updated = {
+        ...order,
+        paymentStatus: 'Paid',
+        paymentMethod: 'Razorpay',
+        razorpayPaymentId: capturedPayment ? capturedPayment.id : (order.razorpayPaymentId || `pay_sync_${Date.now()}`),
+        orderStatus: order.orderStatus === 'Pending' ? 'Processing' : order.orderStatus,
+        paidAt: capturedPayment?.created_at ? new Date(capturedPayment.created_at * 1000).toISOString() : new Date().toISOString()
+      };
+
+      await setDoc('orders', order.id, updated);
+      await decrementOrderStock(updated);
+      return updated;
+    }
+  } catch (err) {
+    console.warn(`Could not sync Razorpay for order ${order.id}:`, err.message);
+  }
+
+  return order;
 }
 
 async function getRazorpayInstance() {
@@ -34,6 +123,25 @@ async function getRazorpayInstance() {
 router.get('/', authMiddleware, async (req, res) => {
   try {
     let orders = await getCollection('orders');
+
+    // Auto-sync recent pending orders (created in last 7 days) that have razorpayOrderId
+    const recentPending = orders.filter(o => 
+      o.paymentStatus !== 'Paid' && 
+      o.razorpayOrderId && 
+      o.createdAt && 
+      (Date.now() - new Date(o.createdAt).getTime() < 7 * 24 * 60 * 60 * 1000)
+    ).slice(0, 15);
+
+    if (recentPending.length > 0) {
+      let anySynced = false;
+      for (const po of recentPending) {
+        const synced = await checkAndSyncRazorpayPayment(po);
+        if (synced && synced.paymentStatus === 'Paid') anySynced = true;
+      }
+      if (anySynced) {
+        orders = await getCollection('orders');
+      }
+    }
     const { search, status, paymentStatus, date, page = 1, limit = 50 } = req.query;
 
     if (search) {
@@ -181,6 +289,9 @@ router.get('/:id', async (req, res) => {
   try {
     const order = await getDoc('orders', req.params.id);
     if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (order.paymentStatus !== 'Paid' && order.razorpayOrderId) {
+      order = await checkAndSyncRazorpayPayment(order);
+    }
     res.json(order);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -328,6 +439,35 @@ router.post('/', async (req, res) => {
     }
 
     res.status(201).json(newOrder);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST sync single order payment with Razorpay ────────────
+router.post('/:id/sync-razorpay', authMiddleware, async (req, res) => {
+  try {
+    const order = await getDoc('orders', req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    const synced = await checkAndSyncRazorpayPayment(order);
+    res.json({ success: true, order: synced });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST sync all pending orders with Razorpay ──────────────
+router.post('/sync-all-razorpay', authMiddleware, async (req, res) => {
+  try {
+    const orders = await getCollection('orders');
+    const pendingWithRzp = orders.filter(o => o.paymentStatus !== 'Paid' && o.razorpayOrderId);
+    const results = [];
+    for (const o of pendingWithRzp) {
+      const synced = await checkAndSyncRazorpayPayment(o);
+      results.push({ id: o.id, paymentStatus: synced.paymentStatus });
+    }
+    res.json({ success: true, count: results.length, orders: results });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
