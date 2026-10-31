@@ -7,9 +7,9 @@ const { getDoc, setDoc, getCollection } = require('../middleware/db');
 // Default Admin credentials (fallback)
 const DEFAULT_ADMIN = {
   id: 'admin_001',
-  username: 'dnshoppy_admin',
-  passwordHash: bcrypt.hashSync('DN@Admin2026', 10),
-  name: 'DN Shoppy Admin',
+  username: 'dn_super_admin',
+  passwordHash: bcrypt.hashSync('DN#Shoppy@2026!ProSecure', 10),
+  name: 'DN Shoppy Super Admin',
   role: 'super_admin',
 };
 
@@ -37,7 +37,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Username and password required' });
 
     const admins = await getAllAdmins();
-    const adminUser = admins.find(a => (a.username || '').trim() === (username || '').trim());
+    const adminUser = admins.find(a => (a.username || '').toLowerCase().trim() === (username || '').toLowerCase().trim());
 
     if (!adminUser)
       return res.status(401).json({ error: 'Invalid credentials' });
