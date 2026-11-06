@@ -25,31 +25,67 @@ if (process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_
   });
 }
 
+function extractPublicId(url) {
+  if (!url || typeof url !== 'string') return null;
+  const clean = url.split('?')[0];
+  const uploadIdx = clean.indexOf('/upload/');
+  if (uploadIdx === -1) return null;
+  const afterUpload = clean.substring(uploadIdx + 8);
+  const parts = afterUpload.split('/');
+  
+  const nonTransformParts = [];
+  let foundVersionOrPublic = false;
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (!foundVersionOrPublic) {
+      if (/^v\d+$/.test(part)) {
+        foundVersionOrPublic = true;
+        continue;
+      }
+      if (part.includes(',') || part.startsWith('w_') || part.startsWith('h_') || part.startsWith('c_') || part.startsWith('f_') || part.startsWith('q_')) {
+        continue;
+      }
+    }
+    nonTransformParts.push(part);
+  }
+  const fileWithExt = nonTransformParts.join('/');
+  return fileWithExt.substring(0, fileWithExt.lastIndexOf('.')) || fileWithExt;
+}
+
 /**
  * Checks the image URL and deletes it from the respective storage provider
  */
 const deleteImage = async (imageUrl) => {
   try {
-    if (!imageUrl) return;
+    if (!imageUrl || typeof imageUrl !== 'string') return;
     
     // 1. Delete from Cloudinary
     if (imageUrl.includes('res.cloudinary.com')) {
-      const parts = imageUrl.split('/');
-      const uploadIndex = parts.indexOf('upload');
-      if (uploadIndex === -1) return;
+      const publicId = extractPublicId(imageUrl);
+      if (!publicId) return;
 
-      const afterUpload = parts.slice(uploadIndex + 1);
-      if (afterUpload.length > 0 && afterUpload[0].match(/^v\d+$/)) {
-        afterUpload.shift();
+      // Detect account dynamically from URL
+      let targetCloud = process.env.CLOUDINARY_CLOUD_NAME || 'uje56pqa';
+      let apiKey = process.env.CLOUDINARY_API_KEY || '361622763294372';
+      let apiSecret = process.env.CLOUDINARY_API_SECRET || 'j5ODN9YzFj11SAqB8xwYzK0zmtQ';
+
+      if (imageUrl.includes('/p0cbzhw6/')) {
+        targetCloud = 'p0cbzhw6';
+        apiKey = '454734555652622';
+        apiSecret = '8_L4tq_O8yOwRxiMO8VgQ5TAeMs';
+      } else if (imageUrl.includes('/uje56pqa/')) {
+        targetCloud = 'uje56pqa';
+        apiKey = '361622763294372';
+        apiSecret = 'j5ODN9YzFj11SAqB8xwYzK0zmtQ';
       }
 
-      const fileWithExt = afterUpload.join('/');
-      const publicId = fileWithExt.substring(0, fileWithExt.lastIndexOf('.'));
-
-      if (publicId) {
-        await cloudinary.uploader.destroy(publicId);
-        console.log(`Deleted Cloudinary image: ${publicId}`);
-      }
+      const res = await cloudinary.uploader.destroy(publicId, {
+        cloud_name: targetCloud,
+        api_key: apiKey,
+        api_secret: apiSecret,
+        invalidate: true
+      });
+      console.log(`Cloudinary image deleted: ${publicId} from ${targetCloud} ->`, res.result);
       return;
     }
 

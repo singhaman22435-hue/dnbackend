@@ -207,9 +207,10 @@ router.put('/:id', authMiddleware, async (req, res) => {
     const updateData = { ...req.body, updatedAt: new Date().toISOString() };
     
     // Find removed images and delete them from Cloudinary
-    if (oldProduct && oldProduct.images && Array.isArray(oldProduct.images)) {
-      const newImages = updateData.images || [];
-      const removedImages = oldProduct.images.filter(img => !newImages.includes(img));
+    if (oldProduct) {
+      const oldImages = Array.isArray(oldProduct.images) ? oldProduct.images : (oldProduct.image ? [oldProduct.image] : []);
+      const newImages = Array.isArray(updateData.images) ? updateData.images : (updateData.image ? [updateData.image] : []);
+      const removedImages = oldImages.filter(img => !newImages.includes(img));
       for (const imgUrl of removedImages) {
         await deleteImage(imgUrl);
       }
@@ -228,8 +229,13 @@ router.put('/:id', authMiddleware, async (req, res) => {
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const product = await getDoc('products', req.params.id);
-    if (product && product.images && Array.isArray(product.images)) {
-      for (const imgUrl of product.images) {
+    if (product) {
+      const imagesToDelete = [];
+      if (Array.isArray(product.images)) imagesToDelete.push(...product.images);
+      if (product.image && typeof product.image === 'string' && !imagesToDelete.includes(product.image)) {
+        imagesToDelete.push(product.image);
+      }
+      for (const imgUrl of imagesToDelete) {
         await deleteImage(imgUrl);
       }
     }
