@@ -111,8 +111,10 @@ router.post('/', upload.single('file'), async (req, res) => {
         fs.unlinkSync(req.file.path); // delete local
         return res.json({ url: result.secure_url });
       } catch (err) {
-        console.error('Cloudinary Error:', err);
-        throw new Error('Cloudinary upload failed: ' + (err.message || 'Unknown error'));
+        console.warn('Cloudinary upload failed, attempting next fallback:', err.message);
+        if (!fs.existsSync(req.file.path)) {
+          throw new Error('Cloudinary upload failed: ' + (err.message || 'Unknown error'));
+        }
       }
     }
 
