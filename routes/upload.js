@@ -101,20 +101,42 @@ router.post('/', upload.single('file'), async (req, res) => {
       }
     }
 
-    // 2. Fallback to Cloudinary
-    if (process.env.CLOUDINARY_URL || process.env.CLOUDINARY_CLOUD_NAME) {
-      try {
-        const result = await cloudinary.uploader.upload(req.file.path, {
-          folder: 'dnshoppy',
-          resource_type: 'auto' // Supports images and videos
-        });
-        fs.unlinkSync(req.file.path); // delete local
-        return res.json({ url: result.secure_url });
-      } catch (err) {
-        console.warn('Cloudinary upload failed, attempting next fallback:', err.message);
-        if (!fs.existsSync(req.file.path)) {
-          throw new Error('Cloudinary upload failed: ' + (err.message || 'Unknown error'));
-        }
+    // 2. Cloudinary Upload (Optimized with automatic downscale & compression so quota is never exceeded)
+    const cloudinaryConfig = {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'p0cbzhw6',
+      api_key: process.env.CLOUDINARY_API_KEY || '454734555652622',
+      api_secret: process.env.CLOUDINARY_API_SECRET || '8_L4tq_O8yOwRxiMO8VgQ5TAeMs'
+    };
+
+    // If env is still pointing to the disabled account 'uje56pqa', automatically use the new working account
+    if (cloudinaryConfig.cloud_name === 'uje56pqa') {
+      cloudinaryConfig.cloud_name = 'p0cbzhw6';
+      cloudinaryConfig.api_key = '454734555652622';
+      cloudinaryConfig.api_secret = '8_L4tq_O8yOwRxiMO8VgQ5TAeMs';
+    }
+
+    try {
+      const uploadOptions = {
+        folder: 'dnshoppy',
+        resource_type: 'auto',
+        transformation: [
+          { width: 1200, height: 1600, crop: 'limit' },
+          { quality: 'auto:good' },
+          { fetch_format: 'auto' }
+        ]
+      };
+
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        ...uploadOptions,
+        ...cloudinaryConfig
+      });
+
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      return res.json({ url: result.secure_url });
+    } catch (err) {
+      console.warn('Cloudinary upload failed, attempting next fallback:', err.message);
+      if (!fs.existsSync(req.file.path)) {
+        throw new Error('Cloudinary upload failed: ' + (err.message || 'Unknown error'));
       }
     }
 
